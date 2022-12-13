@@ -5,15 +5,20 @@ with open("README.md", "r") as fh:
 
 setup(
     name="algorithmic_ml_sandbox",
-    version="0.1.0",
+    version="0.2.0",
     install_requires=[
+        "pandas==0.24.2",
+        "tensorflow_datasets",
+        "tensorflow",
+        "matplotlib",
         "keras",
         "pymongo",
         "pillow",
-        "numpy",
+        "numpy==1.16.3",
         "black",
-        "redis[hiredis]",
-        "redis-om",
+        "scikit-learn==0.20.3",
+        "scipy==1.2.1",
+        "termcolor==1.1.0"
     ],
     author=["Matthew Siper", "Zehua Jiang"],
     author_email="siper.matthew@gmail.com",
