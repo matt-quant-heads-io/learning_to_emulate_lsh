@@ -15,22 +15,12 @@ do
   mkdir -p $CURR_DIR/models/$subdir
 done
 
+curl -L http://www-nlp.stanford.edu/data/glove.6B.zip -o $CURR_DIR/datasets/glove.6B.zip
+unzip $CURR_DIR/datasets/glove.6B.zip -d $CURR_DIR/datasets/GloVe
+rm $CURR_DIR/datasets/glove.6B.zip
 
-TEMP_MODEL_ZIP=flower_model_bit_0.96875.zip
-
-wget -q https://git.io/JuMq0 -O $TEMP_MODEL_ZIP
-unzip -qq $TEMP_MODEL_ZIP
-
-rm -rf models/vision/*
-mv flower_model_bit_0.96875 models/vision
-rm $TEMP_MODEL_ZIP
-
-curl -L http://www-nlp.stanford.edu/data/glove.6B.zip -o data/glove.6B.zip
-unzip data/glove.6B.zip -d datasets/GloVe
-rm data/glove.6B.zip
-
-echo "Downloading datasets"
-python3 bin/download_datasets.py
+# echo "Downloading datasets"
+# python3 bin/download_datasets.py
 
 
 
