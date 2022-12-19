@@ -4,6 +4,7 @@ import logging
 import argparse
 import random
 import re
+import json
 
 
 from tensorflow.keras import layers
@@ -23,6 +24,11 @@ from numpy import unique
 import pandas as pd
 from keras.optimizers import SGD
 from tensorflow.keras.callbacks import ModelCheckpoint
+import h5py
+import requests
+import tempfile
+import time
+import scann
 
 
 
@@ -37,32 +43,69 @@ def initialize_logging():
 
 def get_parse_args():
     argparser = argparse.ArgumentParser()
-    argparser.add_argument("--num_clusters", type=int, required=True)
-    argparser.add_argument("--num_words", type=int, required=True)
     argparser.add_argument("--vec_dim", type=int, default=100)
-    argparser.add_argument("--experiment", required=True, choices=["run_ml_experiment", "intra_cluster", "inter_cluster", "scann"])
     argparser.add_argument("--num_runs", type=int, default=100)
-        
-
+       
     args = argparser.parse_args()
 
     return args
 
-    
-def run_ml_experiment(test_data_df, num_words, num_clusters, num_runs):
+
+def run_random_experiment(test_data_df, num_words, num_clusters, num_runs, final_results):
     model_1 = keras.models.load_model(f"models/inter_cluster_models/{num_clusters}_clusters_{num_words}_num_words/model_1_{num_clusters}_clusters_{num_words}_num_words") 
     results = {"run": [], "actual_distance": [], "predicted_distance": []}
-    final_results = {"total_runs": [], "avg_predicted_difference": []}
+    json_clusters = json.load(open(f"/home/jupyter-msiper/algorithmic_ml_sandbox/datasets/GloVe/100D_{num_words}-words_{num_clusters}-clusters.json"))
+
     
-    # select the vector of the correct answer
+    test_query_vector = None
+    test_centroid_vector = None
+    for run in range(num_runs):
+        test_idx = random.randint(0, num_words//2)
+        other_test_idx = random.randint(num_words//2, num_words)
+        test_query_vector = [float(s) for s in test_data_df.iloc[test_idx, 1].strip('][').split(', ')]
+        test_centroid_vector = [float(s.strip()) for s in re.findall(r"[-+]?\d*\.\d+", test_data_df.iloc[test_idx, 3])]
+
+        test_nearest_neighbor_vec = [float(s.strip()) for s in re.findall(r"[-+]?\d*\.\d+", test_data_df.iloc[test_idx, 5])]
+        actual_distance = sum([np.abs(test_nearest_neighbor_vec[i] - test_query_vector[i]) for i in range(100)])
+        
+        
+        model_1_test_vector = np.array([test_query_vector])
+        model_1_prediction = np.argmax(model_1.predict(model_1_test_vector))
+        
+        test_query_vector.extend(test_centroid_vector)
+        model_2_test_vector = np.array([test_query_vector])
+        
+        
+        
+        model_2_vec = [float(s) for s in test_data_df.iloc[other_test_idx, 1].strip('][').split(', ')]
+        predicted_distance = sum([float(np.abs(test_nearest_neighbor_vec[i] - model_2_vec[i])) for i in range(100)])
+        absolute_difference = np.abs(actual_distance - predicted_distance)
+        
+        results["run"].append(run)
+        results["actual_distance"].append(actual_distance)
+        results["predicted_distance"].append(predicted_distance)
+        
+    final_results["random"].append(sum(results["predicted_distance"])/num_runs)
+
+    return final_results
+    
+    
+    
+def run_ml_experiment(test_data_df, num_words, num_clusters, num_runs, final_results):
+    model_1 = keras.models.load_model(f"models/inter_cluster_models/{num_clusters}_clusters_{num_words}_num_words/model_1_{num_clusters}_clusters_{num_words}_num_words") 
+    results = {"run": [], "actual_distance": [], "predicted_distance": []}
+    json_clusters = json.load(open(f"/home/jupyter-msiper/algorithmic_ml_sandbox/datasets/GloVe/100D_{num_words}-words_{num_clusters}-clusters.json"))
+    
     test_query_vector = None
     test_centroid_vector = None
     for run in range(num_runs):
         test_idx = random.randint(0, num_words)
         test_query_vector = [float(s) for s in test_data_df.iloc[test_idx, 1].strip('][').split(', ')]
         test_centroid_vector = [float(s.strip()) for s in re.findall(r"[-+]?\d*\.\d+", test_data_df.iloc[test_idx, 3])]
+#         test_centroid_vector = test_centroid_vector / np.linalg.norm(test_centroid_vector, axis=0)
         print(f"test_centroid_vector: {test_centroid_vector}")
         test_nearest_neighbor_vec = [float(s.strip()) for s in re.findall(r"[-+]?\d*\.\d+", test_data_df.iloc[test_idx, 5])]
+
         actual_distance = sum([np.abs(test_nearest_neighbor_vec[i] - test_query_vector[i]) for i in range(100)])
         
         
@@ -82,47 +125,90 @@ def run_ml_experiment(test_data_df, num_words, num_clusters, num_runs):
                 
         model_2 = keras.models.load_model(path_to_model_2) 
         model_2_prediction = np.argmax(model_2.predict(model_2_test_vector))
-        print(f"model_2_prediction: {model_2_prediction}")
+
         model_2_df = test_data_df[test_data_df['cluster_id']==model_1_prediction]
-        print(model_2_df.head())
-        model_2_vec = [float(s) for s in model_2_df.iloc[model_2_prediction, 1].strip('][').split(', ')]
-        predicted_distance = sum([np.abs(test_nearest_neighbor_vec[i] - model_2_vec[i]) for i in range(100)])
+        
+        tries = 0
+        
+        if model_2_prediction >= len(json_clusters[model_1_prediction]):
+            continue
+            
+        model_2_vec = json_clusters[model_1_prediction][model_2_prediction]
+        model_2_df = test_data_df[test_data_df['word']==model_2_vec]
+        
+        model_2_vec = [float(s) for s in model_2_df.iloc[0, 1].strip('][').split(', ')]
+        predicted_distance = sum([float(np.abs(test_nearest_neighbor_vec[i] - model_2_vec[i])) for i in range(100)])
         absolute_difference = np.abs(actual_distance - predicted_distance)
         
         results["run"].append(run)
         results["actual_distance"].append(actual_distance)
         results["predicted_distance"].append(predicted_distance)
         
-    final_results["total_runs"].append(num_runs)
-    final_results["avg_predicted_difference"].append(sum(results["predicted_distance"])/num_runs)
-    final_df = pd.DataFrame(final_results)
-    final_df.to_csv(f"ml_exp_{num_words}_num_words_{num_clusters}_num_clusters_{1000}_num_runs.csv")
+    final_results["runs"].append(num_runs)
+    final_results["ml"].append(sum(results["predicted_distance"])/num_runs)
+
+    return final_results
         
         
 def run_intra_cluster_experiment(test_data_df, num_words, num_runs):
     pass
 
+
 def run_inter_cluster_experiment(test_data_df, num_words, num_runs):
     pass
 
 
-def run_scann_experiment(test_data_df, num_words, num_runs):
-    pass
+def run_scann_experiment(test_data_df, num_words, num_clusters, num_runs, final_results):
+    loc = os.path.join("/home/jupyter-msiper/algorithmic_ml_sandbox/", "glove.hdf5")   
+    glove_h5py = h5py.File(loc, "r")
+    
+    dataset = glove_h5py['train']
+    queries = glove_h5py['test']
+    
+#     dataset = dataset / np.linalg.norm(dataset, axis=1)[:, np.newaxis]
+
+    searcher = scann.scann_ops_pybind.builder(dataset, num_clusters, "dot_product").tree(
+        num_leaves=2000, num_leaves_to_search=100, training_sample_size=num_words).score_ah(
+        2, anisotropic_quantization_threshold=0.01).reorder(100).build()
+    
+    results = {"run": [], "predicted_distance": []}
+
+    for run in range(num_runs):
+        results["run"].append(run)
+        test_idx = random.randint(0, num_words)
+        
+        neighbors, distances = searcher.search(dataset[test_idx], final_num_neighbors=1)
+        results["predicted_distance"].append(distances[0])
+    final_results["scann"].append(sum(results["predicted_distance"])/len(results["predicted_distance"]))
+    
+    return final_results
     
     
-def main(num_clusters, num_words, vec_dim, experimemt, num_runs):
+def run_experiment(num_clusters, num_words, vec_dim, num_runs):
+    final_results = {"runs": [], "scann":[], "random":[], "ml": []}
     df = pd.read_csv(f'datasets/GloVe/df_{num_clusters}_clusters_{num_words}.csv')
-    EXPERIMENT_FUNC_DICT[experimemt](df, num_words, num_clusters, num_runs)
+    for exp_name, func in EXPERIMENT_FUNC_DICT.items():
+        final_results = func(df, num_words, num_clusters, num_runs, final_results)
+        
+    final_df = pd.DataFrame(final_results)
+    final_df.to_csv(f"experiment_{num_words}_num_words_{num_clusters}_num_clusters_{1000}_num_runs.csv")
+    
+
+def main(vec_dim, num_runs):
+    num_clusters_words = [(10, 10000), (100, 10000), (10, 20000), (100, 20000), (10, 50000), (100, 50000)]
+    
+    for num_clusters, num_words in num_clusters_words:
+        run_experiment(num_clusters, num_words, vec_dim, num_runs)
+        
 
 if __name__ == '__main__':
     EXPERIMENT_FUNC_DICT = {
-    "run_ml_experiment": run_ml_experiment,
-    "intra_cluster": run_intra_cluster_experiment,
-    "inter_cluster": run_inter_cluster_experiment,
-    "scann": run_scann_experiment,
-}
+        "run_ml_experiment": run_ml_experiment,
+        "run_random_experiment": run_random_experiment,
+        "scann": run_scann_experiment,
+    }
     
     initialize_logging()
     args = get_parse_args()
     
-    main(args.num_clusters, args.num_words, args.vec_dim, args.experiment, args.num_runs)
+    main(args.vec_dim, args.num_runs)
