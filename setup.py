@@ -5,8 +5,9 @@ with open("README.md", "r") as fh:
 
 setup(
     name="algorithmic_ml_sandbox",
-    version="0.2.0",
+    version="0.3.0",
     install_requires=[
+        "scann",
         "pandas==0.24.2",
         "tensorflow_datasets",
         "tensorflow",
