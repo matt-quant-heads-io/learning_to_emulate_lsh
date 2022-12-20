@@ -49,11 +49,11 @@ def parse_args():
 							 '(default: 100).')
 	parser.add_argument('--num_words', '-n',
 						type=int,
-						default=10000,
+						default=20000,
 						help='The number of lines to read from the GloVe '
 							 'vector file (default: 10000).')
 	parser.add_argument('--num_clusters', '-k',
-						default=1000,
+						default=100,
 						type=int,
 						help='Number of resulting word clusters. '
 						'The number of K in K-Means (default: 1000).')
@@ -64,7 +64,7 @@ def parse_args():
 						     '-1 = all cores. '
 							 'More cores = less time, more memory (default: -1).')
 	parser.add_argument('--glove_path', '-i',
-		                default='datasets/gloVe',
+		                default='/home/jupyter-msiper/algorithmic_ml_sandbox/datasets/GloVe',
 		                help='GloVe vector file path (default: data/glove)')
 	return parser.parse_args()
 
@@ -72,7 +72,7 @@ if __name__ == '__main__':
 
 	args = parse_args()
 
-	filename = path = 'datasets/GloVe/{}'.format(get_cache_filename_from_args(args))
+	filename = path = '/home/jupyter-msiper/algorithmic_ml_sandbox/datasets/GloVe/{}'.format(get_cache_filename_from_args(args))
 	cluster_to_words = None
 	start_time = time.time()
 
@@ -83,7 +83,7 @@ if __name__ == '__main__':
 	if not os.path.isfile(filename):
 
 		print('No cached cluster found. Clustering using K-Means... ')
-		kmeans_model = KMeans(init='k-means++', n_clusters=args.num_clusters, n_jobs=args.n_jobs, n_init=10)
+		kmeans_model = KMeans(init='k-means++', n_clusters=args.num_clusters, n_jobs=args.n_jobs, n_init=10, max_iter=300)
 		kmeans_model.fit(df)
 
 		cluster_labels   = kmeans_model.labels_
@@ -105,7 +105,7 @@ if __name__ == '__main__':
 					df_dict[f'nearest_{i}_vec'].append(str(word_to_vector_dict[res[i][0]]))
 
 		df_to_reconstruct = DataFrame(df_dict)
-		df_to_reconstruct.to_csv(f'datasets/GloVe/df_{args.num_clusters}_clusters_{args.num_words}.csv', index=False)
+		df_to_reconstruct.to_csv(f'/home/jupyter-msiper/algorithmic_ml_sandbox/datasets/GloVe/df_{args.num_clusters}_clusters_{args.num_words}.csv', index=False)
 
 		# cache these clustering results
 		save_json(path, cluster_to_words)
@@ -122,3 +122,5 @@ if __name__ == '__main__':
 
 	if start_time != None:
 			print("--- {:.2f} seconds ---".format((time.time() - start_time)))
+           
+            

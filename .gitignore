@@ -132,3 +132,7 @@ dmypy.json
 datasets/
 models/
 notes.txt
+experiments/
+glove.hdf5
+glove.6B.zip
+.ipynb_checkpoints/
