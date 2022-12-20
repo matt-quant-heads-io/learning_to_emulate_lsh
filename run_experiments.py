@@ -29,8 +29,11 @@ import requests
 import tempfile
 import time
 import scann
+import pypapi
+from pypapi import papi_high
+from pypapi import events as papi_events
 
-
+print(dir(papi_events))
 
 
 def initialize_logging():
@@ -44,7 +47,7 @@ def initialize_logging():
 def get_parse_args():
     argparser = argparse.ArgumentParser()
     argparser.add_argument("--vec_dim", type=int, default=100)
-    argparser.add_argument("--num_runs", type=int, default=100)
+    argparser.add_argument("--num_runs", type=int, default=1000)
        
     args = argparser.parse_args()
 
@@ -67,7 +70,6 @@ def run_random_experiment(test_data_df, num_words, num_clusters, num_runs, final
 
         test_nearest_neighbor_vec = [float(s.strip()) for s in re.findall(r"[-+]?\d*\.\d+", test_data_df.iloc[test_idx, 5])]
         actual_distance = sum([np.abs(test_nearest_neighbor_vec[i] - test_query_vector[i]) for i in range(100)])
-        
         
         model_1_test_vector = np.array([test_query_vector])
         model_1_prediction = np.argmax(model_1.predict(model_1_test_vector))
@@ -110,6 +112,20 @@ def run_ml_experiment(test_data_df, num_words, num_clusters, num_runs, final_res
         
         
         model_1_test_vector = np.array([test_query_vector])
+
+        # Starts some counters
+        papi_high.start_counters([
+            pypapi.events.PAPI_FP_OPS
+        ])
+
+        # Reads values from counters and reset them
+        results1 = papi_high.read_counters()  # -> [int, int]
+        model_1.predict(model_1_test_vector)
+
+        # Reads values from counters and stop them
+        results1 = papi_high.stop_counters()  # -> [int, int]
+        print(f"results1: {results1}")
+
         model_1_prediction = np.argmax(model_1.predict(model_1_test_vector))
         
         test_query_vector.extend(test_centroid_vector)
@@ -124,6 +140,20 @@ def run_ml_experiment(test_data_df, num_words, num_clusters, num_runs, final_res
                 path_to_model_2 = f"/home/jupyter-msiper/algorithmic_ml_sandbox/models/intra_cluster_models/{num_clusters}_clusters_{num_words}_num_words/{model_2_dir}"
                 
         model_2 = keras.models.load_model(path_to_model_2) 
+
+        # Starts some counters
+        papi_high.start_counters([
+            pypapi.events.PAPI_FP_OPS
+        ])
+
+        # Reads values from counters and reset them
+        results2 = papi_high.read_counters()  # -> [int, int]
+        model_2.predict(model_2_test_vector)
+
+        # Reads values from counters and stop them
+        results2 = papi_high.stop_counters()  # -> [int, int]
+        print(f"results2: {results2}")
+
         model_2_prediction = np.argmax(model_2.predict(model_2_test_vector))
 
         model_2_df = test_data_df[test_data_df['cluster_id']==model_1_prediction]
@@ -176,8 +206,20 @@ def run_scann_experiment(test_data_df, num_words, num_clusters, num_runs, final_
     for run in range(num_runs):
         results["run"].append(run)
         test_idx = random.randint(0, num_words)
-        
+        # Starts some counters
+        papi_high.start_counters([
+            pypapi.events.PAPI_FP_OPS
+        ])
+
+        # Reads values from counters and reset them
+        results3 = papi_high.read_counters()  # -> [int, int]
         neighbors, distances = searcher.search(dataset[test_idx], final_num_neighbors=1)
+
+        # Reads values from counters and stop them
+        results3 = papi_high.stop_counter
+        print(f"results3: {results3}")
+        
+        
         results["predicted_distance"].append(distances[0])
     final_results["scann"].append(sum(results["predicted_distance"])/len(results["predicted_distance"]))
     
@@ -191,7 +233,7 @@ def run_experiment(num_clusters, num_words, vec_dim, num_runs):
         final_results = func(df, num_words, num_clusters, num_runs, final_results)
         
     final_df = pd.DataFrame(final_results)
-    final_df.to_csv(f"experiment_{num_words}_num_words_{num_clusters}_num_clusters_{1000}_num_runs.csv")
+    final_df.to_csv(f"experiments/experiment_{num_words}_num_words_{num_clusters}_num_clusters_{num_runs}_num_runs.csv")
     
 
 def main(vec_dim, num_runs):
