@@ -53,7 +53,8 @@ def main(num_clusters, num_words, vec_dim):
 
     x_train = []
     y_train = []
-    for idx in range(len(df)):
+    data_len = int(len(df)*0.9)
+    for idx in range(data_len):
         x = [float(s) for s in df.iloc[idx, 1].strip('][').split(', ')]
         y = int(df.iloc[idx, 2])
         x_train.append(x)

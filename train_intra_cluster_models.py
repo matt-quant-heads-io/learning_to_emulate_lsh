@@ -42,6 +42,7 @@ def get_parse_args():
 
 def main(num_clusters, num_words, vec_dim):
     df_master = pd.read_csv(f'datasets/GloVe/df_{num_clusters}_clusters_{num_words}.csv')
+    df_master = df_master[:int(len(df_master)*0.9)]
     """
     COlumns of df_master
     Index(['word', 'vector', 'cluster_id', 'centroid_vector', 'nearest_0_id',
