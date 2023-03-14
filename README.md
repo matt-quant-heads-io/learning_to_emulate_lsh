@@ -1,6 +1,6 @@
 # Learning to Emulate Locality Sensitive Hashing for Nearest Neighbor Search: An Empirical Comparison
 
-In this work we emulate nearest neighbor search with a multi-head 1-D CNN pipeline that predicts inter-cluster then intra-cluster labels generated from a fitted K-means model on the GloVe dataset. Paper [here](EmulatingNearestNeighborSearch.pdf).
+In this work we emulate nearest neighbor search with a multi-head 1-D CNN pipeline that predicts inter-cluster then intra-cluster labels generated from a fitted K-means model on the GloVe dataset. Paper [here](LearningToEmulateLSH.pdf).
 
 ## Setup 
 1) Create conda environemnt from terminal
