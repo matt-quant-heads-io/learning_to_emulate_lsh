@@ -1,5 +1,4 @@
-# Learning to Emulate Locality Sensitive Hashing for Nearest Neighbor Search: An Empirical
-Comparison
+# Learning to Emulate Locality Sensitive Hashing for Nearest Neighbor Search: An Empirical Comparison
 
 In this work we emulate nearest neighbor search with a multihead neural network that predicts inter-cluster then intra-cluster labels generated from a fitted K-means model on the GloVe dataset. Paper [here](EmulatingNearestNeighborSearch.pdf).
 
