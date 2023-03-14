@@ -1,5 +1,7 @@
 # algorithmic_ml_sandbox
 
+In this work we emulate nearest neighbor search with a multihead neural network that predicts inter-cluster then intra-cluster labels generated from a fitted K-means model on the GloVe dataset. Paper [here](EmulatingNearestNeighborSearch.pdf).
+
 ## Setup 
 1) Create conda environemnt from terminal
 
